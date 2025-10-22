@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Challenge — v1.2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Crete+Round:ital@0;1&family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/tone@14.9.15/build/Tone.js"></script>
+  <style>
+    :root {
+      --primary-color: #1212b3;
+      --secondary-color: #f7e0a8;
+      --accent-color: #e6b22c;
+      --text-color: #4b4b4b;
+      --background-color: #f4f4e9;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      transition: all 0.3s ease-in-out;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      width: 92vw;
+      max-width: 720px;
+      background-color: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      text-align: center;
+      border: 4px solid var(--accent-color);
+    }
+    .title {
+      font-family: 'Crete Round', serif;
+      color: var(--primary-color);
+      font-size: 2.25rem;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+    }
+    .title-svg { height: 2.25rem; width: 2.25rem; }
+
+    .score-box {
+      font-family: 'Crete Round', serif;
+      color: var(--accent-color);
+      background-color: var(--primary-color);
+      padding: .5rem 1rem;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center; gap: .75rem;
+      margin-bottom: .75rem;
+      font-size: 1.1rem;
+    }
+    .progress-box { font-size: .95rem; margin: .25rem 0 .5rem 0; }
+    .progress-container {
+      width: 100%; height: 20px; background-color: #ccc; border-radius: 10px;
+      margin-bottom: 1rem; overflow: hidden; border: 2px solid var(--accent-color);
+    }
+    .progress-bar { height: 100%; width: 0%; background-color: #e6b22c; transition: width .4s ease; border-radius: 8px; }
+
+    .question-text {
+      font-size: 1.15rem; line-height: 1.6; min-height: 100px; display: flex; align-items: center; gap: 1rem;
+      background-color: var(--secondary-color); padding: 1rem; border-radius: 12px; border: 2px solid var(--accent-color);
+      font-weight: 700; text-align: left; margin-bottom: 1rem;
+    }
+    .question-visual { font-size: 2rem; line-height: 1; }
+
+    .btn-container { display: grid; gap: .75rem; margin-top: .5rem; }
+    @media (min-width: 520px) { .btn-container { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+    .btn {
+      background-color: var(--accent-color); color: var(--primary-color); font-weight: 700;
+      padding: .85rem 1rem; border-radius: 12px; cursor: pointer; transition: transform .18s ease, background-color .18s ease;
+      font-size: 1rem; border: 2px solid var(--primary-color); text-align: center;
+    }
+    .btn:hover { transform: translateY(-3px); background-color: #d1a127; }
+    .btn.correct { background-color: #28a745; color: #fff; pointer-events: none; border-color: #1a6d2c; }
+    .btn.wrong { background-color: #dc3545; color: #fff; pointer-events: none; border-color: #8e1c25; }
+
+    #feedback { margin-top: .5rem; font-size: 1.1rem; font-weight: 800; min-height: 24px; }
+    #answer-explanation { margin-top: .5rem; font-size: .98rem; line-height: 1.45; }
+
+    #incorrect-answers { margin-top: 1.25rem; text-align: left; }
+    #incorrect-answers h2 { font-family: 'Crete Round', serif; font-size: 1.35rem; color: var(--primary-color); margin-bottom: .75rem; }
+    #incorrect-answers .missed-item { background: #fff8e1; padding: .9rem; border-radius: 12px; border: 1px solid var(--accent-color); margin-bottom: .75rem; }
+    #incorrect-answers .missed-item p { font-weight: bold; }
+    #incorrect-answers .missed-item span { font-weight: normal; }
+
+    .primary-btn {
+      background-color: var(--primary-color); color: #fff; padding: .9rem 1.5rem; border-radius: 12px; margin-top: 1rem;
+      cursor: pointer; transition: transform .18s ease; font-size: 1.05rem; font-weight: 800;
+    }
+    .primary-btn:hover { transform: translateY(-3px); }
+
+    .rank-container { display: flex; flex-direction: column; align-items: center; margin-top: .75rem; gap: .5rem; }
+    .rank-title { font-family: 'Crete Round', serif; font-size: 1.6rem; margin-top: .25rem; color: var(--primary-color); }
+    .rank-progress-bar { width: 100%; height: 56px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; position: relative; }
+    .rank-track { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 6px; background: var(--secondary-color); width: 100%; border: 2px solid var(--accent-color); border-radius: 8px; }
+    .rank-fill { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 6px; background: var(--primary-color); width: 0%; border-radius: 8px; transition: width .4s ease; }
+    .rank-step { display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
+    .rank-label { font-size: .72rem; font-weight: 800; text-align: center; color: var(--primary-color); white-space: nowrap; }
+    .rank-icon { font-size: 1.35rem; line-height: 1; transition: transform .25s ease; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="game-container">
+     <h1 class="title">Weather and Climate Game!<span style="font-size:1.6em;">🌤️</span></h1>
+
+
+
+      <div class="score-box">
+        <span>Score: <span id="score">0</span></span>
+        <span class="ml-3">Best: <span id="high-score">0</span></span>
+      </div>
+
+      <div id="progress" class="progress-box" aria-live="polite"></div>
+      <div class="progress-container" aria-hidden="true">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+
+      <div id="question-text" class="question-text">
+        <p>Welcome to the Weather Challenge!</p>
+      </div>
+
+      <div id="answer-buttons" class="btn-container">
+        <button class="btn" id="start-btn">Start Game</button>
+      </div>
+
+      <div id="feedback" aria-live="polite"></div>
+      <div id="answer-explanation"></div>
+      <div id="incorrect-answers"></div>
+
+      <div class="flex gap-2 justify-center">
+        <button id="next-btn" class="primary-btn hidden">Next Question</button>
+        <button id="results-btn" class="primary-btn hidden">Show Results</button>
+        <button id="play-again-btn" class="primary-btn hidden">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ----------------------- Audio -----------------------
+    const correctSynth = new Tone.Synth().toDestination();
+    const incorrectSynth = new Tone.MembraneSynth({ envelope: { attack: 0.01, decay: 0.4, sustain: 0.05 } }).toDestination();
+    const clickSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.01 } }).toDestination();
+    const completionSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+    const playCorrectSound = () => { correctSynth.triggerAttackRelease('G5', '8n'); correctSynth.triggerAttackRelease('B5', '8n', '+0.1'); correctSynth.triggerAttackRelease('D6', '8n', '+0.2'); };
+    const playIncorrectSound = () => incorrectSynth.triggerAttackRelease('C2', '8n');
+    const playClickSound = () => clickSynth.triggerAttackRelease('C5', '16n');
+    const playCompletionSound = () => completionSynth.triggerAttackRelease(['C4','E4','G4','B4'], '4n');
+
+    // ----------------------- Data -----------------------
+    const questions = [
+  {
+    question: "Which part of the water cycle is when liquid water changes into vapor?",
+    visual: "💧☀️",
+    answers: [
+      { text: "Evaporation", correct: true },
+      { text: "Condensation", correct: false },
+      { text: "Precipitation", correct: false },
+      { text: "Collection", correct: false }
+    ],
+    explanation: "Evaporation is when the sun heats water and changes it into vapor."
+  },
+  {
+    question: "Which part of the water cycle is when water vapor turns into clouds?",
+    visual: "☁️",
+    answers: [
+      { text: "Collection", correct: false },
+      { text: "Condensation", correct: true },
+      { text: "Evaporation", correct: false },
+      { text: "Precipitation", correct: false }
+    ],
+    explanation: "Condensation is when vapor cools and forms clouds."
+  },
+  {
+    question: "When water falls from the sky as rain, snow, sleet, or hail, what is this called?",
+    visual: "🌧️❄️",
+    answers: [
+      { text: "Evaporation", correct: false },
+      { text: "Collection", correct: false },
+      { text: "Precipitation", correct: true },
+      { text: "Condensation", correct: false }
+    ],
+    explanation: "Precipitation means water falls back to Earth."
+  },
+  {
+    question: "When water gathers in oceans, lakes, or rivers, which part of the cycle is this?",
+    visual: "🏞️🌊",
+    answers: [
+      { text: "Condensation", correct: false },
+      { text: "Collection", correct: true },
+      { text: "Evaporation", correct: false },
+      { text: "Precipitation", correct: false }
+    ],
+    explanation: "Collection is when water gathers in bodies of water."
+  },
+  {
+    question: "A person who tells us about the weather, often on the news, is called a…",
+    visual: "📺🌦️",
+    answers: [
+      { text: "Geologist", correct: false },
+      { text: "Meteorologist", correct: true },
+      { text: "Astronomer", correct: false },
+      { text: "Biologist", correct: false }
+    ],
+    explanation: "A meteorologist studies and reports the weather."
+  },
+  {
+    question: "A prediction of what the weather will be like for the next few days is called a…",
+    visual: "📅🌤️",
+    answers: [
+      { text: "Estimate", correct: false },
+      { text: "Forecast", correct: true },
+      { text: "Observation", correct: false },
+      { text: "Report", correct: false }
+    ],
+    explanation: "A forecast tells us what the weather will be like soon."
+  },
+  {
+    question: "Which climate is dry, with very little rainfall, extreme temperatures, and little plant or animal life?",
+    visual: "🏜️",
+    answers: [
+      { text: "Temperate", correct: false },
+      { text: "Desert", correct: true },
+      { text: "Tropical", correct: false },
+      { text: "Polar", correct: false }
+    ],
+    explanation: "The desert climate is very dry with little life."
+  },
+  {
+    question: "Which climate has hot, dry summers and cool, wet winters?",
+    visual: "🍇☀️🌧️",
+    answers: [
+      { text: "Mediterranean", correct: true },
+      { text: "Polar", correct: false },
+      { text: "Desert", correct: false },
+      { text: "Tropical", correct: false }
+    ],
+    explanation: "The Mediterranean climate has hot dry summers and cool wet winters."
+  },
+  {
+    question: "Which climate has warm and cold temperatures, no extremes, and rainfall all year?",
+    visual: "🌦️🌳",
+    answers: [
+      { text: "Polar", correct: false },
+      { text: "Desert", correct: false },
+      { text: "Temperate", correct: true },
+      { text: "Tropical", correct: false }
+    ],
+    explanation: "A temperate climate is moderate and rainy all year."
+  },
+  {
+    question: "Which climate has very cold temperatures all year and very little precipitation?",
+    visual: "🧊🐧",
+    answers: [
+      { text: "Polar", correct: true },
+      { text: "Mediterranean", correct: false },
+      { text: "Desert", correct: false },
+      { text: "Tropical", correct: false }
+    ],
+    explanation: "Polar climates are extremely cold with little precipitation."
+  },
+  {
+    question: "Which climate has warm temperatures all year and significant rainfall?",
+    visual: "🌴🌧️",
+    answers: [
+      { text: "Desert", correct: false },
+      { text: "Tropical", correct: true },
+      { text: "Polar", correct: false },
+      { text: "Temperate", correct: false }
+    ],
+    explanation: "Tropical climates are warm and rainy throughout the year."
+  },
+  {
+    question: "In which climate does temperature decrease with altitude and many peaks stay snowy?",
+    visual: "🏔️❄️",
+    answers: [
+      { text: "Polar", correct: false },
+      { text: "Mountains", correct: true },
+      { text: "Temperate", correct: false },
+      { text: "Desert", correct: false }
+    ],
+    explanation: "In mountain climates, temperature drops as you go higher."
+  },
+  {
+    question: "Imagine you live in a place that floods. What is one way to prepare your home?",
+    visual: "🌊🏠",
+    answers: [
+      { text: "Leave windows open", correct: false },
+      { text: "Build barriers or sandbags", correct: true },
+      { text: "Store things on the floor", correct: false },
+      { text: "Ignore the weather", correct: false }
+    ],
+    explanation: "To prepare for floods, you protect your home with barriers and move belongings to higher ground."
+  },
+  {
+    question: "Which weather condition shows no clouds in the sky?",
+    visual: "☀️",
+    answers: [
+      { text: "Cloudy", correct: false },
+      { text: "Sunny", correct: true },
+      { text: "Hail", correct: false },
+      { text: "Partly Cloudy", correct: false }
+    ],
+    explanation: "Sunny means the sky is clear with no clouds."
+  },
+  {
+    question: "Which weather condition shows some clouds but also sun?",
+    visual: "🌤️",
+    answers: [
+      { text: "Partly Cloudy", correct: true },
+      { text: "Cloudy", correct: false },
+      { text: "Mixed", correct: false },
+      { text: "Sunny", correct: false }
+    ],
+    explanation: "Partly cloudy means sun is visible with some clouds."
+  },
+  {
+    question: "Which weather condition shows the sky covered in clouds?",
+    visual: "☁️",
+    answers: [
+      { text: "Snow", correct: false },
+      { text: "Cloudy", correct: true },
+      { text: "Sunny", correct: false },
+      { text: "Hail", correct: false }
+    ],
+    explanation: "Cloudy means the sky is filled with clouds."
+  },
+  {
+    question: "Which weather condition is frozen balls of ice falling from the sky?",
+    visual: "🌨️🧊",
+    answers: [
+      { text: "Rain", correct: false },
+      { text: "Snow", correct: false },
+      { text: "Hail", correct: true },
+      { text: "Mixed", correct: false }
+    ],
+    explanation: "Hail is ice that falls from clouds during storms."
+  },
+  {
+    question: "Which weather condition is liquid water falling from the sky?",
+    visual: "🌧️",
+    answers: [
+      { text: "Rain", correct: true },
+      { text: "Snow", correct: false },
+      { text: "Hail", correct: false },
+      { text: "Sunny", correct: false }
+    ],
+    explanation: "Rain is liquid water falling to Earth."
+  },
+  {
+    question: "Which weather condition is frozen crystals of water falling from the sky?",
+    visual: "❄️",
+    answers: [
+      { text: "Snow", correct: true },
+      { text: "Rain", correct: false },
+      { text: "Hail", correct: false },
+      { text: "Cloudy", correct: false }
+    ],
+    explanation: "Snow is frozen water crystals falling from clouds."
+  },
+  {
+    question: "Which weather condition is a mix of rain, snow, sleet, or freezing rain?",
+    visual: "🌨️🌧️",
+    answers: [
+      { text: "Mixed", correct: true },
+      { text: "Sunny", correct: false },
+      { text: "Cloudy", correct: false },
+      { text: "Temperate", correct: false }
+    ],
+    explanation: "Mixed weather includes more than one type of precipitation."
+  }
+];
+
+
+    const QUIZ_LENGTH = 10;
+
+    // ----------------------- State -----------------------
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let incorrectlyAnsweredQuestions = [];
+    let shuffledQuestions = [];
+
+    // ----------------------- Elements -----------------------
+    const questionTextElement = document.getElementById('question-text');
+    const answerButtonsElement = document.getElementById('answer-buttons');
+    const nextButton = document.getElementById('next-btn');
+    const resultsButton = document.getElementById('results-btn');
+    const playAgainButton = document.getElementById('play-again-btn');
+    const startButton = document.getElementById('start-btn');
+    const scoreElement = document.getElementById('score');
+    const highScoreElement = document.getElementById('high-score');
+    const progressElement = document.getElementById('progress');
+    const feedbackElement = document.getElementById('feedback');
+    const explanationElement = document.getElementById('answer-explanation');
+    const incorrectAnswersElement = document.getElementById('incorrect-answers');
+    const progressBar = document.getElementById('progress-bar');
+
+    // ----------------------- Helpers -----------------------
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+    function shuffleAnswers(q) {
+      const copy = { ...q, answers: [...q.answers] };
+      shuffleArray(copy.answers);
+      return copy;
+    }
+
+    function updateProgressBar(forceFull = false) {
+      const progress = forceFull ? 100 : (currentQuestionIndex / QUIZ_LENGTH) * 100;
+      progressBar.style.width = `${progress}%`;
+    }
+
+    function setHighScoreIfNeeded() {
+      const prev = Number(localStorage.getItem('weather_high_score') || '0');
+      if (score > prev) {
+        localStorage.setItem('weather_high_score', String(score));
+      }
+      highScoreElement.textContent = localStorage.getItem('weather_high_score') || '0';
+    }
+
+    function keyHandler(e) {
+      // 1-4 to pick answers quickly
+      if (!answerButtonsElement) return;
+      const idx = ['1','2','3','4'].indexOf(e.key);
+      if (idx >= 0) {
+        const btn = answerButtonsElement.querySelectorAll('button.btn')[idx];
+        if (btn && !btn.disabled) btn.click();
+      }
+      if (e.key === 'Enter') {
+        if (!nextButton.classList.contains('hidden')) nextButton.click();
+        else if (!resultsButton.classList.contains('hidden')) resultsButton.click();
+        else if (!startButton.classList.contains('hidden')) startButton.click();
+      }
+    }
+
+    // ----------------------- Game Flow -----------------------
+    function handleStartGame() {
+      Tone.start();
+      playClickSound();
+      startGame();
+    }
+    function handleNextQuestion() {
+      playClickSound();
+      currentQuestionIndex++;
+      updateProgressBar();
+      showQuestion();
+    }
+    function handleShowResults() {
+      playClickSound();
+      showResult();
+    }
+
+    startButton.addEventListener('click', handleStartGame);
+    nextButton.addEventListener('click', handleNextQuestion);
+    resultsButton.addEventListener('click', handleShowResults);
+    playAgainButton.addEventListener('click', handleStartGame);
+    window.addEventListener('keydown', keyHandler);
+
+    function startGame() {
+      currentQuestionIndex = 0;
+      score = 0;
+      incorrectlyAnsweredQuestions = [];
+      scoreElement.textContent = score;
+      highScoreElement.textContent = localStorage.getItem('weather_high_score') || '0';
+
+      shuffledQuestions = questions.slice();
+      shuffleArray(shuffledQuestions);
+      shuffledQuestions = shuffledQuestions.slice(0, QUIZ_LENGTH).map(shuffleAnswers);
+
+      startButton.classList.add('hidden');
+      nextButton.classList.add('hidden');
+      resultsButton.classList.add('hidden');
+      playAgainButton.classList.add('hidden');
+      incorrectAnswersElement.innerHTML = '';
+
+      updateProgressBar();
+      showQuestion();
+    }
+
+    function showQuestion() {
+      resetState();
+      const currentQuestion = shuffledQuestions[currentQuestionIndex];
+      progressElement.textContent = `Question ${currentQuestionIndex + 1} of ${shuffledQuestions.length}`;
+
+      questionTextElement.innerHTML = `
+        ${currentQuestion.visual ? `<span class="question-visual">${currentQuestion.visual}</span>` : ''}
+        <p class="flex-grow">${currentQuestion.question}</p>
+      `;
+
+      currentQuestion.answers.forEach((answer) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = answer.text;
+        button.className = 'btn';
+        button.setAttribute('aria-label', answer.text);
+        if (answer.correct) button.dataset.correct = 'true';
+        button.addEventListener('click', playClickSound, { once: true });
+        button.addEventListener('click', selectAnswer);
+        answerButtonsElement.appendChild(button);
+      });
+    }
+
+    function resetState() {
+      nextButton.classList.add('hidden');
+      resultsButton.classList.add('hidden');
+      playAgainButton.classList.add('hidden');
+      feedbackElement.textContent = '';
+      explanationElement.textContent = '';
+      while (answerButtonsElement.firstChild) answerButtonsElement.removeChild(answerButtonsElement.firstChild);
+    }
+
+    function selectAnswer(e) {
+      const selectedBtn = e.target;
+      const isCorrect = selectedBtn.dataset.correct === 'true';
+      const currentQuestion = shuffledQuestions[currentQuestionIndex];
+
+      if (isCorrect) {
+        selectedBtn.classList.add('correct');
+        score++;
+        scoreElement.textContent = score;
+        feedbackElement.textContent = '🌟 Correct! Great job!';
+        playCorrectSound();
+      } else {
+        selectedBtn.classList.add('wrong');
+        feedbackElement.textContent = "😟 Oops! That's not right.";
+        playIncorrectSound();
+        incorrectlyAnsweredQuestions.push(currentQuestion);
+      }
+
+      explanationElement.textContent = currentQuestion.explanation;
+
+      // Show correct answer & disable others
+      Array.from(answerButtonsElement.children).forEach((button) => {
+        if (button.dataset.correct === 'true') button.classList.add('correct');
+        button.disabled = true;
+      });
+
+      if (currentQuestionIndex < shuffledQuestions.length - 1) {
+        nextButton.classList.remove('hidden');
+      } else {
+        resultsButton.classList.remove('hidden');
+      }
+    }
+
+    function getRank(score, total) {
+      const p = (score / total) * 100;
+      if (p === 100) return 'PERFECT DAY!!';
+      if (p >= 80) return 'Bountiful Sunshine!';
+      if (p >= 60) return 'Pleasant Morning!';
+      if (p >= 40) return 'Patchy Fog!';
+      return 'Damp Breeze!';
+    }
+    function rankIndex(rank) {
+      return ['Damp Breeze!','Patchy Fog!','Pleasant Morning!','Bountiful Sunshine!','PERFECT DAY!!'].indexOf(rank);
+    }
+    function rankIcon(rank) {
+      switch (rank) {
+        case 'PERFECT DAY!!': return '🌅';
+        case 'Bountiful Sunshine!': return '🌞';
+        case 'Pleasant Morning!': return '🌤️';
+        case 'Patchy Fog!': return '😶‍🌫️';
+        default: return '💦💨';
+      }
+    }
+
+    function showResult() {
+      resetState();
+      playCompletionSound();
+      updateProgressBar(true); // force full bar at the end
+      progressElement.textContent = '';
+      questionTextElement.textContent = '🎉 Game Over!';
+
+      setHighScoreIfNeeded();
+
+      const finalRank = getRank(score, shuffledQuestions.length);
+      const ranks = ['Damp Breeze!','Patchy Fog!','Pleasant Morning!','Bountiful Sunshine!','PERFECT DAY!!'];
+      const activeIdx = rankIndex(finalRank);
+      const fillPct = ((activeIdx) / (ranks.length - 1)) * 100; // 0..100
+
+      const rankBarHTML = `
+        <div class="rank-progress-bar">
+          <div class="rank-track"></div>
+          <div class="rank-fill" style="width:${fillPct}%"></div>
+          ${ranks.map((r, i) => `
+            <div class="rank-step">
+              <span class="rank-icon ${i===activeIdx ? 'scale-125' : ''}">${rankIcon(r)}</span>
+              <span class="rank-label ${i===activeIdx ? 'font-bold' : ''}">${r}</span>
+            </div>
+          `).join('')}
+        </div>`;
+
+      answerButtonsElement.innerHTML = `
+        <p id="final-score" class="font-extrabold text-[1.25rem] text-[var(--primary-color)]">You scored ${score} out of ${shuffledQuestions.length}!</p>
+        <div class="rank-container">
+          <p class="rank-title">Your Rank: ${finalRank}</p>
+          ${rankBarHTML}
+        </div>
+      `;
+
+      if (incorrectlyAnsweredQuestions.length > 0) {
+        feedbackElement.textContent = 'Here are the questions you missed:';
+        const listHTML = incorrectlyAnsweredQuestions.map((q) => {
+          const ca = q.answers.find((a) => a.correct).text;
+          return `
+            <div class="missed-item">
+              <p>Question: <span>${q.question}</span></p>
+              <p>Correct Answer: <span>${ca}</span></p>
+              <p>Explanation: <span>${q.explanation}</span></p>
+            </div>`;
+        }).join('');
+        incorrectAnswersElement.innerHTML = `<h2>Questions to Review</h2>${listHTML}`;
+      } else {
+        feedbackElement.textContent = 'You got every question right! You are a Roman History Pro!';
+      }
+
+      playAgainButton.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
